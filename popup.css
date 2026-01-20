@@ -1,0 +1,82 @@
+.phrase-popup {
+    display: none;
+    position: absolute;
+    background: transparent;
+    z-index: 999999;
+    display: none;
+    position: absolute;
+    color: rgb(209, 208, 208);
+    pointer-events: auto;
+    border-radius: 10px;
+    opacity: 0.9;
+    max-height: 200px; /* Ajusta el máximo alto del popup */
+    transform-origin: bottom; /* Hace que el popup se expanda desde la parte inferior */
+    transition: transform 0.3s ease-in-out; /* Añade una transición suave */
+    overflow: visible !important; /* Permite que los elementos sobresalgan del contenedor */
+
+  }
+  .close-popup {
+    z-index: 1000; /* Asegúrate de que esté por encima del contenedor */
+    position: absolute;
+    top: -10px; /* Sobresale 10px hacia arriba */
+    right: -10px; /* Sobresale 10px hacia la derecha */
+    cursor: pointer;
+    color: #fff;
+    font-size: 16px;
+    background: rgb(172, 51, 51);
+    border: none;
+    border-radius: 50%; /* Cambia la forma a un círculo */
+    width: 24px; /* Tamaño del botón */
+    height: 24px; /* Tamaño del botón */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Sombra para destacar */
+    transition: background 0.3s ease; /* Transición suave al pasar el mouse */
+  }
+  .close-popup:hover {
+    background: rgb(248, 239, 239); /* Cambia el color al pasar el mouse */
+    color: rgb(172, 51, 51); /* Cambia el color del texto */
+  }
+  .phrase {
+    padding: 8px;
+    background: rgb(59, 59, 59);
+    border-radius: 10px;
+    cursor:pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow-y: auto; /* Permite que los elementos sobresalgan del contenedor */
+  }
+  body, html {
+    overflow: visible; /* Permite que los elementos sobresalgan de los límites */
+}
+  .phrase:hover {
+    background: #854949;
+    color: white;
+  }
+  .translation-popup {
+    display: none;
+    position: absolute;
+    background: white;
+    border: 1px solid #dfe1e5;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 12px;
+    z-index: 2147483647;
+    max-width: 300px;
+    font-family: Arial, sans-serif;
+  }
+  
+  .translation-result {
+    color: #202124;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  
+  .loading {
+    display: none;
+    padding: 8px;
+    background: rgb(59, 59, 59);
+    border-radius: 10px;
+    cursor:  pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }

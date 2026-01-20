@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Mi Extensión con Bun",
+  "version": "1.0",
+  "permissions": ["activeTab"],
+  "host_permissions": ["http://localhost:3000/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [{
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["popup.css"],
+      "run_at": "document_end"
+    }]
+}
