@@ -1,6 +1,6 @@
 import { groqServices } from "./services/groq";
 const server = Bun.serve({
-  port: 3000,
+  port: Number(process.env.PORT ?? 3000),
   hostname:"0.0.0.0",
   async fetch(req) {
     const url = new URL(req.url);
