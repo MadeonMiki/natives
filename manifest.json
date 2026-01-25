@@ -3,7 +3,7 @@
   "name": "Mi Extensión con Bun",
   "version": "1.0",
   "permissions": ["activeTab"],
-  "host_permissions": ["http://localhost:3000/*"],
+  "host_permissions": ["https://natives-ai2.onrender.com/*"],
   "background": {
     "service_worker": "background.js"
   },

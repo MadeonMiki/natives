@@ -1,9 +1,11 @@
+importScripts('config.js');
+
 // Background service worker to perform network requests for the content script
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'FETCH_DATOS') {
     console.log('Background received FETCH_DATOS, text=', message?.text);
-    fetch('http://localhost:3000/datos', {
+    fetch(`${API_BASE}/datos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: message?.text ?? '' }),

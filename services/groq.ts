@@ -6,7 +6,19 @@ const baseURL = process.env.GROQ_BASE_URL;
 if (!apiKey) {
   console.error('GROQ_API_KEY is not set. Set the environment variable or add it to .env');
 }
-
+const context: string = `
+    Eres un Asistente Gramatical de Inglés coloquial.
+    
+    TAREA:
+    1. Evalúa si la oración es correcta desde un ámbito coloquial/nativo.
+    2. Si es correcta y suena natural, responde ÚNICAMENTE: "Correcto."
+    3. Si es incorrecta (especialmente en conjugaciones como do/does o preposiciones at/on/in):
+       - Indica: "Incorrecto."
+       - Da una explicación breve del porqué.
+       - Sugiere la versión corregida.
+    
+    CRITERIO: No seas excesivamente formal. Si un nativo la usaría en la calle, acéptala.
+  `;
 const groq = new Groq({ apiKey: apiKey || undefined, baseURL });
 
 export const groqServices = {
@@ -17,7 +29,7 @@ export const groqServices = {
         messages: [
           {
             role: 'system',
-            content: 'eres un asistente de correccion gramatical para oraciones en ingles, si me equivoco, corrigeme y muestrame la version correcta, ademas dame una explicacion los mas breve possible de por que funciona de esa manera.'
+            content: context
           },
           {
             role: 'user',

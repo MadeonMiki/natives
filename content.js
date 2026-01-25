@@ -226,7 +226,7 @@ document.addEventListener('keyup', debounce((e) => {
             hidePopup(); // Oculta el popup si no hay texto
         }
     }
-}, 500));
+}, 1000));
 
   // Función debounce para evitar muchas llamadas API
 function debounce(func, wait) {
