@@ -3,26 +3,73 @@ let popup = null;
 let currentInput = null;
 let currentPopup = null;
 let currentTarget = null;
-let show =true; // Variable para controlar la visibilidad del popup
+let show = true; // Variable para controlar la visibilidad del popup
+let _rafId = null; // requestAnimationFrame id para throttle
 
 function createPopup() {    
   const popup = document.createElement('div');
   popup.className = 'phrase-popup';
   popup.style.display = 'none';
+  popup.style.position = 'absolute';
+  popup.style.zIndex = '999999';
   popup.innerHTML = `
     <button class="close-popup">&times;</button>
     <div class="phrase">Testing de prueba escrita en input</div>
     <div class="loading" style="display: none;">Cargando...</div>
   `;
+
   document.body.appendChild(popup);
 
   // Agregar evento para cerrar el popup al hacer clic en el botón
   popup.querySelector('.close-popup').addEventListener('click', () => {
-    console.log("Cerrando popup"); // Depuración
-    close(); // Llama a la función close() para cerrar el popup
+    popup.style.display = 'none';
   });
 
   return popup;
+}
+// Devuelve el rect que representa el origen del texto (caret o bounding rect)
+function getOriginClientRect(el) {
+  try {
+    if (!el) return null;
+    // Para elementos contenteditable, intentar obtener el rect de la selección/caret
+    if (el.matches && el.matches('[contenteditable="true"]')) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        const range = sel.getRangeAt(0).cloneRange();
+        // Si hay rects disponibles para la selección, usar el primero
+        const rects = range.getClientRects();
+        if (rects && rects.length) return rects[0];
+      }
+    }
+
+    // Para inputs/textarea y fallback usar boundingClientRect del elemento
+    return el.getBoundingClientRect();
+  } catch (err) {
+    return el.getBoundingClientRect();
+  }
+}
+
+function updatePopupPosition() {
+  if (!popup || !currentInput) return;
+  if (popup.style.display === 'none') return;
+
+  const rect = getOriginClientRect(currentInput) || currentInput.getBoundingClientRect();
+  if (!rect) return;
+
+  const newHeight = popup.offsetHeight || 0;
+  const top = window.scrollY + rect.top - newHeight - 5;
+  const left = window.scrollX + rect.left;
+
+  popup.style.top = `${Math.max(0, top)}px`;
+  popup.style.left = `${Math.max(0, left)}px`;
+}
+
+function scheduleReposition() {
+  if (_rafId) cancelAnimationFrame(_rafId);
+  _rafId = requestAnimationFrame(() => {
+    updatePopupPosition();
+    _rafId = null;
+  });
 }
 function close() {
   if (popup) {
@@ -67,7 +114,7 @@ async function showTranslation(input) {
         return;
     }
     if (!popup) popup = createPopup();
-    currentInput = input; 
+  currentInput = input; 
 
     // Obtener el texto dependiendo del tipo de elemento
     const text = input.matches('input, textarea') ? input.value : input.innerText.trim();
@@ -77,12 +124,9 @@ async function showTranslation(input) {
         hidePopup(); // Oculta el popup si no hay texto
     }
 
-    const rect = input.getBoundingClientRect();
-
-    // Posicionar popup siempre hacia arriba
+    // Mostrar popup y posicionarlo usando la función común
     popup.style.display = 'block';
-    popup.style.top = `${window.scrollY + rect.top - popup.offsetHeight - 5}px`; // Siempre arriba
-    popup.style.left = `${window.scrollX + rect.left}px`;
+    updatePopupPosition();
 
     // Ajustar el tamaño dinámicamente
     popup.style.maxHeight = '200px'; // Máximo alto permitido
@@ -101,58 +145,16 @@ async function showTranslation(input) {
 
     // Recalcular la posición si el contenido cambia
     const newHeight = popup.offsetHeight;
-    popup.style.top = `${window.scrollY + rect.top - newHeight - 5}px`; // Ajustar posición hacia arriba
+    updatePopupPosition();
 }
 function hidePopup() {
-  if (currentPopup) {
-    currentPopup.style.display = 'none';
-    currentTarget = null;
+  if (popup) {
+    popup.style.display = 'none';
   }
+  currentTarget = null;
+  currentInput = null;
 }
 
-// Control de eventos mejorado
-document.addEventListener('focusin', (e) => {
-  if (show== false) return; // Si el popup no debe mostrarse, salir de la función
-  if (e.target.matches('input, textarea, [contenteditable="true"]')) {
-    showTranslation(e.target);
-  }
-});
-
-document.addEventListener('focusout', (e) => {
-    // Esperar un poco antes de ocultar para permitir clics en el popup
-    setTimeout(() => {
-      if (!currentPopup?.contains(document.activeElement)) {
-        hidePopup();
-      }
-    }, 200);
-  
-});
-
-// Manejo de clics en el popup
-document.addEventListener('click', (e) => {
-
-    if (e.target.classList.contains('phrase')) {
-        const text = e.target.innerText.trim(); // Obtiene el texto del popup
-        console.log("Texto del popup:", text); // Depuración
-        if (currentInput) {
-            console.log("Elemento actual (currentInput):", currentInput); // Depuración
-            // Si el elemento actual es un input o textarea
-            if (currentInput.matches('input, textarea')) {
-                currentInput.value = text; // Asigna el texto al input o textarea
-            } 
-            // Si el elemento actual es un div con contenteditable
-            else if (currentInput.matches('[contenteditable="true"]')) {
-                currentInput.innerText = text; // Asigna el texto al div
-            }
-            currentInput.focus(); // Mantiene el foco en el elemento actual
-            close(); // Cierra el popup después de asignar el texto
-        } else {
-            console.warn("No hay un elemento actual (currentInput) para asignar el texto.");
-        }
-    }
-    e.stopPropagation(); // Evita que el clic cierre el popup de forma no deseada
-}
-  );
 document.addEventListener('input', debounce((e) => {
   if (show== false) return; // Si el popup no debe mostrarse, salir de la función
 
@@ -167,51 +169,6 @@ document.addEventListener('input', debounce((e) => {
         }
     }
 }, 500));
-
-document.addEventListener('keydown', (e) => {
-  // Detectar la combinación de teclas Ctrl + Shift + P
-  if (e.key === 'Tab') {
-    e.preventDefault(); // Evita el comportamiento predeterminado de la tecla Tab
-    console.log("Tecla Tab detectada"); // Depuración
-    if (currentInput) {
-      console.log("Elemento actual (currentInput):", currentInput); // Depuración
-      // Si el elemento actual es un input o textarea
-      if (currentInput.matches('input, textarea')) {
-          currentInput.value = popup.querySelector('.phrase').textContent; // Asigna el texto al input o textarea
-          currentInput.setSelectionRange(currentInput.value.length, currentInput.value.length);
-      } 
-      // Si el elemento actual es un div con contenteditable
-      else if (currentInput.matches('[contenteditable="true"]')) {
-          currentInput.innerText = popup.querySelector('.phrase').textContent; // Asigna el texto al div
-          const range = document.createRange();
-          const selection = window.getSelection();
-          range.selectNodeContents(currentInput);
-          range.collapse(false); // Colapsa el rango al final del contenido
-          selection.removeAllRanges();
-          selection.addRange(range);
-      }
-      currentInput.focus(); // Mantiene el foco en el elemento actual
-      close(); // Cierra el popup después de asignar el texto
-    } else {
-      console.warn("No hay un elemento actual (currentInput) para asignar el texto.");
-    }
-  }
-  if (e.ctrlKey && e.shiftKey && e.key === 'P') {
-    e.preventDefault(); // Evita el comportamiento predeterminado de la tecla Tab
-      console.log("Atajo de teclado detectado: Ctrl + Shift + P"); // Depuración
-      show =true; // Cambia la variable de control a true
-      if (popup) {
-          // Mostrar el popup nuevamente
-          popup.style.display = 'block';
-          popup.style.top = `${window.scrollY + currentInput.getBoundingClientRect().top - popup.offsetHeight - 5}px`;
-          popup.style.left = `${window.scrollX + currentInput.getBoundingClientRect().left}px`;
-
-          console.log("Popup mostrado nuevamente.");
-      } else {
-          console.warn("El popup no está inicializado.");
-      }
-  }
-});
 
 document.addEventListener('keyup', debounce((e) => {
   if (show== false) return; // Si el popup no debe mostrarse, salir de la función
@@ -245,6 +202,10 @@ if (document.readyState === 'complete') {
     if (!currentPopup) createPopup();
   });
 }
+
+// Reposicionar popup durante scroll/resize/selection changes
+window.addEventListener('scroll', scheduleReposition, true);
+window.addEventListener('resize', scheduleReposition);
 
 // Prevenir aparición automática en recarga
 window.addEventListener('beforeunload', hidePopup);
