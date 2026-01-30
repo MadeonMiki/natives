@@ -1,4 +1,17 @@
 import { groqServices } from "./services/groq";
+import { cerebrasServices } from "./services/cerebras";
+
+let  random =  Math.floor(Math.random() * 2) + 1;
+let ss = groqServices;
+switch (random) {
+  case 1 : ss = groqServices;
+  break;
+  case 2 : ss = cerebrasServices;
+  break;
+  case 3 : ss = groqServices;
+  break;
+}
+
 const server = Bun.serve({
   port: Number(process.env.PORT ?? 3000),
   hostname:"0.0.0.0",
@@ -35,7 +48,7 @@ const server = Bun.serve({
 
       const prompt = text;
       try {
-        const stream = await groqServices.chat(prompt);
+        const stream = await ss.chat(prompt);
         return new Response(JSON.stringify({
           mensaje: stream,
           timestamp: Date.now(),

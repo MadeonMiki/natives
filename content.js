@@ -6,6 +6,8 @@ let currentTarget = null;
 let show = true; // Variable para controlar la visibilidad del popup
 let _rafId = null; // requestAnimationFrame id para throttle
 
+console.log('content.js loaded', { inTopFrame: window.top === window.self, location: window.location.href });
+
 function createPopup() {    
   const popup = document.createElement('div');
   popup.className = 'phrase-popup';
@@ -19,6 +21,7 @@ function createPopup() {
   `;
 
   document.body.appendChild(popup);
+  console.log('popup element created and appended to document.body');
 
   // Agregar evento para cerrar el popup al hacer clic en el botón
   popup.querySelector('.close-popup').addEventListener('click', () => {
@@ -37,14 +40,21 @@ function getOriginClientRect(el) {
       if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0).cloneRange();
         // Si hay rects disponibles para la selección, usar el primero
-        const rects = range.getClientRects();
-        if (rects && rects.length) return rects[0];
+          const rects = range.getClientRects();
+          if (rects && rects.length) return rects[0];
+          // Fallback: usar boundingClientRect del rango (maneja casos con <br> o caret colapsado)
+          const rangeRect = range.getBoundingClientRect && range.getBoundingClientRect();
+          if (rangeRect && (rangeRect.width || rangeRect.height)) {
+            console.log('getOriginClientRect: using range.getBoundingClientRect', rangeRect);
+            return rangeRect;
+          }
       }
     }
 
     // Para inputs/textarea y fallback usar boundingClientRect del elemento
     return el.getBoundingClientRect();
   } catch (err) {
+    console.warn('getOriginClientRect error', err);
     return el.getBoundingClientRect();
   }
 }
@@ -60,6 +70,7 @@ function updatePopupPosition() {
   const top = window.scrollY + rect.top - newHeight - 5;
   const left = window.scrollX + rect.left;
 
+  console.log('updatePopupPosition', { top, left, newHeight, rectTop: rect.top, rectLeft: rect.left, scrollY: window.scrollY, scrollX: window.scrollX });
   popup.style.top = `${Math.max(0, top)}px`;
   popup.style.left = `${Math.max(0, left)}px`;
 }
@@ -116,12 +127,55 @@ async function showTranslation(input) {
     if (!popup) popup = createPopup();
   currentInput = input; 
 
-    // Obtener el texto dependiendo del tipo de elemento
-    const text = input.matches('input, textarea') ? input.value : input.innerText.trim();
+    // Diagnóstico: log del elemento y sus posibles fuentes de texto
+    try {
+      console.log('showTranslation called', {
+        tag: input.tagName,
+        matchesInput: input.matches('input, textarea'),
+        matchesContentEditable: input.matches && input.matches('[contenteditable="true"]'),
+        innerText: input.innerText && input.innerText.trim(),
+        textContent: input.textContent && input.textContent.trim(),
+        innerHTMLSample: (input.innerHTML || '').slice(0,200)
+      });
+    } catch (e) {
+      console.warn('showTranslation: error logging element info', e);
+    }
+
+    // Obtener el texto dependiendo del tipo de elemento, con varios fallbacks
+    let text = '';
+    if (input.matches && input.matches('input, textarea')) {
+      text = input.value || '';
+    } else if (input.matches && input.matches('[contenteditable="true"]')) {
+      // Preferir innerText, luego textContent limpiando caracteres invisibles, luego selección
+      text = (input.innerText || '').trim();
+      if (!text) text = (input.textContent || '').replace(/\u200B/g, '').trim();
+      if (!text) {
+        const sel = window.getSelection && window.getSelection();
+        if (sel) text = sel.toString().trim();
+      }
+      // Último recurso: intentar tomar texto del nodo donde está el caret
+      if (!text) {
+        try {
+          const sel = window.getSelection && window.getSelection();
+          if (sel && sel.rangeCount) {
+            const range = sel.getRangeAt(0);
+            const node = range.startContainer;
+            if (node && node.nodeType === Node.TEXT_NODE) text = (node.textContent || '').trim();
+          }
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    } else {
+      text = (input.innerText || input.textContent || '').trim();
+    }
+
+    console.log('extracted text for translation:', { length: text.length, sample: text.slice(0,200) });
 
     if (!text) {
-        //console.warn("No hay texto para traducir");
+        console.warn("No hay texto para traducir");
         hidePopup(); // Oculta el popup si no hay texto
+        return;
     }
 
     // Mostrar popup y posicionarlo usando la función común
@@ -169,6 +223,14 @@ document.addEventListener('input', debounce((e) => {
         }
     }
 }, 500));
+
+// Reinsertar focusin para capturar focus en Gmail y otros editores
+document.addEventListener('focusin', (e) => {
+  if (show == false) return;
+  if (e.target && e.target.matches && e.target.matches('input, textarea, [contenteditable="true"]')) {
+    showTranslation(e.target);
+  }
+});
 
 document.addEventListener('keyup', debounce((e) => {
   if (show== false) return; // Si el popup no debe mostrarse, salir de la función
